@@ -18,19 +18,17 @@ class Utill
             {
                 ssize_t sz = recv(sock,&ch,1,0);
                 if(sz > 0){
-                    if(ch == '\r'){
+                    if(ch == '\r' || ch =='\n'){
                         //判断下一个位置是否为\n
                         //使用窥探读取,我只是看看下一个是什么不拿走
-                        ch = recv(sock,&ch,1,MSG_PEEK);
+                        recv(sock,&ch,1,MSG_PEEK);
                         if(ch == '\n'){
-                            ch = recv(sock,&ch,1,0);
+                            recv(sock,&ch,1,0);
                         }
-                        else{
-                            //结尾统一用\n
-                            ch = '\n';
-                        }
+                        if(buff.size() == 0)
+                            buff.push_back('\n');
+                        break;
                     }
-                    log(INTF,buff);
                     buff.push_back(ch);
                 }
                 else if(sz == 0){
@@ -41,12 +39,10 @@ class Utill
                     exit(1);
                 }
             }
-            log(INTF,buff);
         }
         //切割字符串 kOut，vOut输出型参数
         static bool CutString(const string& str,const string& delimiter,string& kOut,string& vOut)
         {
-
             auto it= str.find(delimiter);
             if(it != string::npos){
                 //存在
