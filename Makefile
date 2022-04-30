@@ -1,6 +1,9 @@
-code:text.cpp
-	g++ -o $@ $^ -std=c++11  -pthread 
+bin=HttpServer
+cc=g++
+arg=text.cpp
+$(bin):$(arg)
+	@$(cc) -o $@ $^ -std=c++11  -pthread 
 
 .PHONY:clean
 clean:
-	rm code
+	@rm $(bin)

@@ -37,13 +37,13 @@ class HttpServer
         void Run()
         {
             log("INFO","run success");
+            int listSock = _tcpServer->GetSocket();
             while(true)
             {
-                int listSock = _tcpServer->GetSocket();
                 struct sockaddr_in remote;
                 socklen_t sz = sizeof(remote);
                 int sock = accept(listSock,(sockaddr*)&remote,&sz);
-
+                log(INFO,"创建套接字");
                 if(sock < 0){
                     log(WARN,"accept error");
                     continue;
