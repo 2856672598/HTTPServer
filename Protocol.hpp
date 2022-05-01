@@ -5,10 +5,13 @@
 #include <unordered_map>
 #include <string>
 #include <cstring>
+#include <cstdlib>
+
 
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
 
@@ -92,8 +95,10 @@ class HttpConnect
             auto it = headerKV.find("Content-Length");
             if(it != headerKV.end()){
                 _httpRequest._contentLength = stoi(it->second);
+                log(INFO,"存在MAP中");
                 return true;
             }
+            log(INFO,"map中未找到");
             return false;
         }
 
@@ -128,6 +133,8 @@ class HttpConnect
             for(const auto& e: _httpRequest._requestHeader)
             {
                 if(Utill::CutString(e,delimiter,k,v) == true){
+                    log(INFO,k);
+                    log(INFO,v);
                     _httpRequest._headerKV.insert({k,v});
                 }
             }
@@ -146,9 +153,9 @@ class HttpConnect
         {
             RecvHttpRequestLine();
             RecvHttpRequestHeader();
+            ParseHttpRequest();
             RecvHttpRequestBody();
 
-            ParseHttpRequest();
         }
 
         void ParseHttpRequest()
@@ -171,10 +178,14 @@ class HttpConnect
                     _httpRequest._path.clear();
                     Utill::CutString(_httpRequest._url,"?",_httpRequest._path,_httpRequest._parameter);
                     _httpRequest._cgi = true;
+                    log(INFO,"请求中带参数");
                 }
+                log(INFO,_httpRequest._path);
             }
             else if(_httpRequest._requestMethod == "POST"){
                 _httpRequest._cgi = true;
+                _httpRequest._path = _httpRequest._url;
+                log(INFO,"POST请求");
             }
             else{
             }
@@ -191,6 +202,7 @@ class HttpConnect
 
             //判断请求的路径是否存在
             struct stat buf;
+            log(INFO,_httpRequest._path);
             if(stat(_httpRequest._path.c_str(),&buf) == 0){
                 //判断请求的是一个目录还是文件
                 if(S_ISDIR(buf.st_mode)){
@@ -202,6 +214,7 @@ class HttpConnect
                 if(buf.st_mode&S_IXGRP || buf.st_mode&S_IXOTH || buf.st_mode&S_IXUSR){
                     //判断请求的资源是否是一个可执行程序
                     _httpRequest._cgi = true;
+                    log(INFO,"请求的是一个可执行程序");
                 }
             }
             else{
@@ -209,20 +222,92 @@ class HttpConnect
                 log(WARN,"NOT FOUNT");
                 goto END;
             }
-
             if(_httpRequest._cgi == true){
+                log(INFO,"PROCCES CGI");
                 ProccesCgi();
             }
             else{
-                log(INFO,_httpRequest._path);
+                log(INFO,_httpRequest._path+"noCGI");
                 ProccesNonCgi(buf.st_size);
             }
 END:
             return ;
         }
 
-        void ProccesCgi()
-        {}
+        int ProccesCgi()
+        {
+            log(INFO,"begin Proccss Cgi");
+            //通过创建子进程，让子进程进行程序替换，完成请求的任务
+            //程序替换的是 代码的数据和代码，所以在替换后父进程继承的数据就被清空了--就需要用管道完成通信
+            //以父进程的角度
+            int readArr[2];
+            int writeArr[2];
+            const string& requestMethod = _httpRequest._requestMethod;
+
+            if(pipe(readArr) == -1){
+                //创建管道失败
+                log(WARN,"create pipe error");
+                return 404;
+            }
+            if(pipe(writeArr) == -1){
+                //创建管道失败
+                log(WARN,"create pipe error");
+                return 404;
+            }
+            pid_t pid = fork();
+            if(pid == 0){
+                string contentLengthEnv = "CONTENT_LENGTH=";
+                string  requestMethodEnv = "REQUESTMETHOD=";
+                requestMethodEnv += _httpRequest._requestMethod;
+                putenv((char*)requestMethodEnv.c_str());
+
+                close(readArr[0]);
+                close(writeArr[1]);
+
+                std::cerr<<requestMethod<<endl;
+                if(requestMethod == "GET"){
+                    string queryString = "QUERY_STRING=";
+                    queryString += _httpRequest._parameter;
+                    putenv((char*)queryString.c_str());
+                    std::cerr<<queryString<<endl;
+                }
+                else if(requestMethod == "POST"){
+                    contentLengthEnv += std::to_string(_httpRequest._contentLength);
+                    if(putenv((char*)contentLengthEnv.c_str()) != 0){
+                        log(WARN,"putenv error");
+                    }
+                    std::cerr<<contentLengthEnv<<endl;
+                }
+                //读端
+                dup2(writeArr[0],0);
+                //写端
+                dup2(readArr[1],1);
+                log(INFO,requestMethod);
+               execl(_httpRequest._path.c_str(),_httpRequest._path.c_str(),nullptr);
+               std::cerr<<_httpRequest._path.c_str()<<endl;
+               std::cerr<<"程序替换失败"<<endl;
+            }
+            else if(pid > 0){
+                close(readArr[1]);
+                close(writeArr[0]);
+                if(requestMethod == "POST"){
+                    int size = _httpRequest._requestBody.size();
+                    int begin = 0;
+                    const char* buff = _httpRequest._requestBody.c_str();
+                    ssize_t sz = 0;
+                    while((sz = write(writeArr[1],(char*)buff + begin,size - begin))>0)
+                    {
+                        begin+=sz;
+                    }
+                }
+                waitpid(pid,nullptr,0);
+            }
+            else{
+                //创建子进程失败
+            }
+            log(INFO,"exit CGI");
+            return 200;
+        }
 
         void ProccesNonCgi(int size)
         {
@@ -267,7 +352,6 @@ class Entrance
         {
             int socket = *((int*)sock);
             log(INFO,std::to_string(socket));
-            std::cout<<"----------------begin-------------------"<<std::endl;
             HttpConnect* en = new HttpConnect(socket);
             en->RecvHttpRequest();
             en->MakeHttpResponse();
