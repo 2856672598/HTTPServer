@@ -11,12 +11,12 @@ int main()
 
     if(method == "GET"){
         char* queryString = getenv("QUERY_STRING");
-        if(queryString != nullptr){
-            cerr<<queryString<<endl;
+        if(queryString != NULL){
+            cout<<queryString<<endl;
         }
     }
     else if(method == "POST"){
-        cerr<<getenv("CONTENT_LENGTH")<<endl;
+        cout<<getenv("CONTENT_LENGTH")<<endl;
     }
     cerr<<"***********************************"<<endl;
     return 0;

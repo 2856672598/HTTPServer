@@ -5,7 +5,9 @@
 #include <sys/socket.h>
 
 #include "TcpSocket.hpp"
-#include "Protocol.hpp"
+
+#include "Protocol.h"
+#include "Log.hpp"
 #define PORT 8080
 class HttpServer
 {
@@ -36,16 +38,14 @@ class HttpServer
 
         void Run()
         {
-            log("INFO","run success");
             int listSock = _tcpServer->GetSocket();
             while(true)
             {
                 struct sockaddr_in remote;
                 socklen_t sz = sizeof(remote);
                 int sock = accept(listSock,(sockaddr*)&remote,&sz);
-                log(INFO,"创建套接字");
                 if(sock < 0){
-                    log(WARN,"accept error");
+                    LOG(WARN,"accept error");
                     continue;
                 }
                 int* _sock = new int(sock);
@@ -56,6 +56,4 @@ class HttpServer
             }
         }
 };
-
-
 HttpServer*  HttpServer::_httpServer = nullptr;

@@ -50,7 +50,7 @@ class TcpSocket
         {
             _lsockfd = socket(AF_INET,SOCK_STREAM,0);
             if(_lsockfd == -1){
-                log(FATAL,"socker error");
+                LOG(FATAL,"socker error");
                 exit(1);
             }
         }
@@ -65,7 +65,7 @@ class TcpSocket
             local.sin_port = htons(_port);
 
             if(bind(_lsockfd,(struct sockaddr*)&local,sizeof(local)) == -1){
-                log(FATAL,"bind error");
+                LOG(FATAL,"bind error");
                 exit(4);
             }
         }
@@ -73,7 +73,7 @@ class TcpSocket
         void Listen()
         {
             if(listen(_lsockfd,BACKLOG) == -1){
-                log(FATAL,"listen error");
+                LOG(FATAL,"listen error");
                 exit(3);
             }
         }

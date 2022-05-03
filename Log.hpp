@@ -9,9 +9,8 @@ using std::string;
 #define ERROR 
 #define FATAT
 
-#define log(Level,info) Log(#Level,info,__FILE__,__LINE__)
 
-
+#define LOG(Level,info) Log(#Level,info,__FILE__,__LINE__)
 void Log(string Level,string info,string fileName,int lineNumber)
 {
     std::cout<<"["<<Level<<"]["<<time(nullptr)<<"]["<<fileName<<"]"<<"["<<lineNumber<<"]["<<info<<"]"<<std::endl;

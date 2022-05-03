@@ -8,10 +8,11 @@
 using std::string;
 using std::cout;
 using std::endl;
+
 class Utill
 {
     public:
-        static void ReadLine(int sock,string& buff)
+        static int ReadLine(int sock,string& buff)
         {
             char ch = 'a';
             while(ch != '\n')
@@ -33,12 +34,13 @@ class Utill
                 }
                 else if(sz == 0){
                     //远端关闭
+                    return 0;
                 }
                 else {
-                    perror("redv");
-                    exit(1);
+                    return -1;
                 }
             }
+            return buff.size();
         }
         //切割字符串 kOut，vOut输出型参数
         static bool CutString(const string& str,const string& delimiter,string& kOut,string& vOut)
