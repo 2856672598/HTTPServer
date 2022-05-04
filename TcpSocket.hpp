@@ -1,5 +1,4 @@
 #pragma once 
-
 #include <iostream>
 #include <cstdlib>
 #include <sys/socket.h>
@@ -32,7 +31,6 @@ class TcpSocket
                 pthread_mutex_lock(&mlock);
                 if(_instance == nullptr){
                     _instance = new TcpSocket(port);
-                    return _instance;
                 }
                 pthread_mutex_unlock(&mlock);
             }
@@ -44,6 +42,7 @@ class TcpSocket
             Socket();
             Bind();
             Listen();
+            LOG(INFO,"TcpSocket Success");
         }
 
         void Socket()

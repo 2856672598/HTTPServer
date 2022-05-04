@@ -214,121 +214,6 @@ class HttpConnect
                 }
             }
         }
-    public:
-        HttpConnect(int sock)
-            :_stop(false),_sock(sock)
-        {
-            signal(SIGPIPE,nullptr);
-        }
-
-        ~HttpConnect()
-        {
-            close(_sock);
-        }
-
-        bool IsStop()
-        {
-            return _stop;
-        }
-
-        void RecvHttpRequest()
-        {
-            if(!RecvHttpRequestLine()&&!RecvHttpRequestHeader()){
-                ParseHttpRequest();
-                RecvHttpRequestBody();
-            }
-        }
-
-        void ParseHttpRequest()
-        {
-            ParseHttpRequestLine();
-            ParseHttpRequestHeader();
-        }
-
-        void MakeHttpResponse()
-        {
-            string tmp;
-            string suffix;
-            size_t pos;
-            if(_httpRequest._requestMethod !="GET"&&_httpRequest._requestMethod!="POST"){
-                _httpResponse._statusCode = 400;
-                goto END;
-            }
-            //如果是get方法判断是否携带参数
-            if(_httpRequest._requestMethod == "GET"){
-                auto it = _httpRequest._url.find("?");
-                _httpRequest._path = _httpRequest._url;
-                if(it != string::npos){
-                    //解析参数和路径
-                    _httpRequest._path.clear();
-                    Utill::CutString(_httpRequest._url,"?",_httpRequest._path,_httpRequest._parameter);
-                    _httpRequest._cgi = true;
-                    LOG(INFO,"请求中带参数");
-                }
-                LOG(INFO,_httpRequest._path);
-            }
-            else if(_httpRequest._requestMethod == "POST"){
-                _httpRequest._cgi = true;
-                _httpRequest._path = _httpRequest._url;
-                LOG(INFO,"POST请求");
-            }
-            else{
-            }
-            //补全路径
-            tmp = _httpRequest._path;
-            _httpRequest._path = DEFAULTPATH;
-            _httpRequest._path += tmp;
-
-
-            if(_httpRequest._path[_httpRequest._path.size()-1] == '/'){
-                _httpRequest._path += FRONTPAGE;
-            }
-
-            //判断请求的路径是否存在
-            struct stat buf;
-            LOG(INFO,_httpRequest._path);
-            if(stat(_httpRequest._path.c_str(),&buf) == 0){
-                //判断请求的是一个目录还是文件
-                if(S_ISDIR(buf.st_mode)){
-                    //当访问的是目录时访问目录首页
-                    _httpRequest._path+='/';
-                    _httpRequest._path+=FRONTPAGE;
-                    stat(_httpRequest._path.c_str(),&buf);
-                }
-                if(buf.st_mode&S_IXGRP || buf.st_mode&S_IXOTH || buf.st_mode&S_IXUSR){
-                    //判断请求的资源是否是一个可执行程序
-                    _httpRequest._cgi = true;
-                    LOG(INFO,"请求的是一个可执行程序");
-                }
-            }
-            else{
-                //访问的路径不存在
-                LOG(WARN,"NOT FOUNT");
-                _httpResponse._statusCode = 404;
-                goto END;
-            }
-
-            pos = _httpRequest._path.rfind(".");
-            if(pos != string::npos){
-                suffix = _httpRequest._path.substr(pos);
-                _httpResponse._contentType = ContentType::GetInstance()->SuffixToType(suffix);
-            }
-
-            if(_httpRequest._cgi == true){
-                LOG(INFO,"PROCCES CGI");
-                ProccesCgi();
-            }
-            else{
-                _httpResponse._size = buf.st_size;
-                LOG(INFO,_httpRequest._path+"noCGI");
-                ProccesNonCgi();
-            }
-END:
-            LOG(INFO,std::to_string(_httpResponse._statusCode));
-            //响应处理
-            _MakeHttpResponse();
-            return ;
-        }
 
         void _MakeHttpResponse()
         {
@@ -447,6 +332,7 @@ END:
                 dup2(readArr[1],1);
                execl(_httpRequest._path.c_str(),_httpRequest._path.c_str(),nullptr);
                std::cerr<<"程序替换失败"<<endl;
+               exit(-1);
             }
             else if(pid > 0){
                 close(readArr[1]);
@@ -499,6 +385,120 @@ END:
             _httpResponse._fd = fd;
         }
 
+    public:
+        HttpConnect(int sock)
+            :_stop(false),_sock(sock)
+        {}
+
+        ~HttpConnect()
+        {
+            close(_sock);
+        }
+
+        bool IsStop()
+        {
+            return _stop;
+        }
+
+        void RecvHttpRequest()
+        {
+            if(!RecvHttpRequestLine()&&!RecvHttpRequestHeader()){
+                ParseHttpRequest();
+                RecvHttpRequestBody();
+            }
+        }
+
+        void ParseHttpRequest()
+        {
+            ParseHttpRequestLine();
+            ParseHttpRequestHeader();
+        }
+
+        void MakeHttpResponse()
+        {
+            string tmp;
+            string suffix;
+            size_t pos;
+            if(_httpRequest._requestMethod !="GET"&&_httpRequest._requestMethod!="POST"){
+                _httpResponse._statusCode = 400;
+                goto END;
+            }
+            //如果是get方法判断是否携带参数
+            if(_httpRequest._requestMethod == "GET"){
+                auto it = _httpRequest._url.find("?");
+                _httpRequest._path = _httpRequest._url;
+                if(it != string::npos){
+                    //解析参数和路径
+                    _httpRequest._path.clear();
+                    Utill::CutString(_httpRequest._url,"?",_httpRequest._path,_httpRequest._parameter);
+                    _httpRequest._cgi = true;
+                    LOG(INFO,"请求中带参数");
+                }
+                LOG(INFO,_httpRequest._path);
+            }
+            else if(_httpRequest._requestMethod == "POST"){
+                _httpRequest._cgi = true;
+                _httpRequest._path = _httpRequest._url;
+                LOG(INFO,"POST请求");
+            }
+            else{
+            }
+            //补全路径
+            tmp = _httpRequest._path;
+            _httpRequest._path = DEFAULTPATH;
+            _httpRequest._path += tmp;
+
+
+            if(_httpRequest._path[_httpRequest._path.size()-1] == '/'){
+                _httpRequest._path += FRONTPAGE;
+            }
+
+            //判断请求的路径是否存在
+            struct stat buf;
+            LOG(INFO,_httpRequest._path);
+            if(stat(_httpRequest._path.c_str(),&buf) == 0){
+                //判断请求的是一个目录还是文件
+                if(S_ISDIR(buf.st_mode)){
+                    //当访问的是目录时访问目录首页
+                    _httpRequest._path+='/';
+                    _httpRequest._path+=FRONTPAGE;
+                    stat(_httpRequest._path.c_str(),&buf);
+                }
+                if(buf.st_mode&S_IXGRP || buf.st_mode&S_IXOTH || buf.st_mode&S_IXUSR){
+                    //判断请求的资源是否是一个可执行程序
+                    _httpRequest._cgi = true;
+                    LOG(INFO,"请求的是一个可执行程序");
+                }
+            }
+            else{
+                //访问的路径不存在
+                LOG(WARN,"NOT FOUNT");
+                _httpResponse._statusCode = 404;
+                goto END;
+            }
+
+            pos = _httpRequest._path.rfind(".");
+            if(pos != string::npos){
+                suffix = _httpRequest._path.substr(pos);
+                _httpResponse._contentType = ContentType::GetInstance()->SuffixToType(suffix);
+            }
+
+            if(_httpRequest._cgi == true){
+                LOG(INFO,"PROCCES CGI");
+                ProccesCgi();
+            }
+            else{
+                _httpResponse._size = buf.st_size;
+                LOG(INFO,_httpRequest._path+"noCGI");
+                ProccesNonCgi();
+            }
+END:
+            LOG(INFO,std::to_string(_httpResponse._statusCode));
+            //响应处理
+            _MakeHttpResponse();
+            return ;
+        }
+
         void SentHttpProcces()
         {
             LOG(INFO,std::to_string(_sock));
@@ -530,27 +530,18 @@ END:
         }
 };
 
-
-
 class Entrance
 {
     public:
-        static void* HandlerRequest(void* sock)
+        static void* HandlerRequest(int sock)
         {
-            int socket = *((int*)sock);
-            LOG(INFO,std::to_string(socket));
-            std::shared_ptr<HttpConnect> en(new HttpConnect(socket));
-
+            std::shared_ptr<HttpConnect>en (new HttpConnect(sock));
             en->RecvHttpRequest();
             if(!en->IsStop()){
                 en->MakeHttpResponse();
                 en->SentHttpProcces();
+            }else{
+                LOG(INFO,"异常");
             }
-            else{
-                LOG(INFO,"recv error  Stop");
-            }
-            //delete en;
-            delete (int*)sock;
         }
-
 };
