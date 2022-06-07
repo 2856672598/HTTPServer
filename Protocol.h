@@ -331,6 +331,7 @@ class HttpConnect
                 //写端
                 dup2(readArr[1],1);
                execl(_httpRequest._path.c_str(),_httpRequest._path.c_str(),nullptr);
+               std::cerr<<_httpRequest._path<<endl;
                std::cerr<<"程序替换失败"<<endl;
                exit(-1);
             }
@@ -349,7 +350,7 @@ class HttpConnect
                 }
                 int status = 0;
                 waitpid(-1,&status,0);
-                if(WIFEXITED(status)){
+                if(WIFEXITED(status)!=0){
                     if(WEXITSTATUS(status)){
                         LOG(INFO,"子进程执行错误");
                         _httpResponse._statusCode = 400;
@@ -364,6 +365,7 @@ class HttpConnect
                     }
                 }
                 else{
+                    LOG(INFO,"子进程执行失败");
                     _httpResponse._statusCode = 500;
                 }
             }
@@ -522,8 +524,6 @@ END:
                 }   
             }
             else{
-                LOG(INFO,"发送正文");
-                LOG(INFO,std::to_string(_sock)); 
                 sendfile(_sock,_httpResponse._fd,NULL,_httpResponse._size);
                 close(_httpResponse._fd);
             }

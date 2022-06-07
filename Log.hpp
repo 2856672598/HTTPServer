@@ -13,7 +13,5 @@ using std::string;
 
 void Log(string Level,string info,string fileName,int lineNumber)
 {
-#ifdef open
     std::cout<<"["<<Level<<"]["<<time(nullptr)<<"]["<<fileName<<"]"<<"["<<lineNumber<<"]["<<info<<"]"<<std::endl;
-#endif
 }

@@ -12,13 +12,11 @@ class HttpServer
 {
     private:
         int _port;
-        //TcpSocket* _tcpServer;
         static HttpServer* _httpServer;
     private:
         HttpServer(int port = PORT)
             :_port(port)
         {
-           // _tcpServer = TcpSocket::GetInstance(port);
             signal(SIGPIPE,SIG_IGN);
         }
     public:
@@ -49,11 +47,6 @@ class HttpServer
                     LOG(WARN,"accept error");
                     continue;
                 }
-                //int* _sock = new int(sock);
-                ////创建线程处理任务
-                //pthread_t tid;
-                //pthread_create(&tid,NULL,Entrance::HandlerRequest,_sock);
-                //pthread_detach(tid);
                 
                 LOG(INFO,"获取链接成功");
                 Task* t = new Task(sock);

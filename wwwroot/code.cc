@@ -16,6 +16,7 @@ int main()
         }
     }
     else if(method == "POST"){
+        cout<<"POST请求";
         cout<<getenv("CONTENT_LENGTH")<<endl;
     }
     cerr<<"***********************************"<<endl;
